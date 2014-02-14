@@ -72,6 +72,7 @@ class MainWindow(QtGui.QMainWindow):
 
 
         self.show()
+
     def reloadCentralWidget(self):
         # setup config parser
         self.config = ConfigParser.SafeConfigParser(allow_no_value=True)
@@ -91,7 +92,6 @@ class MainWindow(QtGui.QMainWindow):
         self.showPlotAction.triggered.connect(self.cw.showPlot)
         self.editConfigAction.triggered.connect(self.reloadCentralWidget)
 
-        
         
 class CentralWidget(QtGui.QWidget):
 

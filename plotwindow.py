@@ -1,10 +1,5 @@
 from PyQt4 import QtGui, QtCore
-import matplotlib
-
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
-from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
+import pyqtgraph as pg
 
 class PlotWindow(QtGui.QDialog):
     def __init__(self, parent, log, updateSignal):
@@ -15,8 +10,6 @@ class PlotWindow(QtGui.QDialog):
         updateSignal.connect(self.updatePlot)
 
     def initUI(self):
-        self.plot_frame = QtGui.QWidget()
-        
         # create a textbox and a label for the plotting formula
         xlbl = QtGui.QLabel('x-axis', self)
         ylbl = QtGui.QLabel('y-axis', self)
@@ -36,31 +29,10 @@ class PlotWindow(QtGui.QDialog):
         update_button.clicked.connect(self.updateFormula)
         help_button.clicked.connect(self.showHelp)
 
-        # Create the mpl Figure and FigCanvas objects. 
-        # 5x4 inches, 100 dots-per-inch
-        #
-        self.dpi = 100
-        self.fig = Figure((6.0, 5.0), dpi=self.dpi)
-        self.canvas = FigureCanvas(self.fig)
-        self.canvas.setParent(self.plot_frame)
-        
-        # Since we have only one plot, we can use add_axes 
-        # instead of add_subplot, but then the subplot
-        # configuration tool in the navigation toolbar wouldn't
-        # work.
-        #
-        self.axes = self.fig.add_subplot(111)
-        
-        # Bind the 'pick' event for clicking on one of the bars
-        #
-        #self.canvas.mpl_connect('pick_event', self.on_pick)
-        
-        # Create the navigation toolbar, tied to the canvas
-        #self.mpl_toolbar = NavigationToolbar(self.canvas, self.plot_frame)
+        self.plot_frame = pg.PlotWidget()
+        self.p1 = self.plot_frame.plot()
+        self.p1.setPen(0)
 
-        # initialize the plotting region
-        #self.axes.clear()
-    
         self.grid = QtGui.QGridLayout()
         self.grid.addWidget(xlbl, 0, 0)
         self.grid.addWidget(ylbl, 1, 0)
@@ -76,18 +48,6 @@ class PlotWindow(QtGui.QDialog):
         self.resize(610, 610)
         self.setWindowTitle('Plots')
 
-
-        # plot something initially
-        self.line = self.axes.plot(self.log.logdict['time'], 
-            self.log.logdict['AIN0'])[0]
-
-        # get the background for the plot
-        self.background = self.fig.canvas.copy_from_bbox(self.axes.bbox)
-
-        # draw the canvas once
-        self.canvas.draw()
-        #self.fig.show()
-        
         self.show() 
 
     def updateFormula(self, e):
@@ -125,14 +85,8 @@ complicated formulae like AIN3+2.0*AIN12, etc."""
         x_array = eval(self.x_plotting_string, self.log.logdict)
         
         ind = self.log.n_log_curr
-        self.axes.clear()
-        if self.x_plotting_string == 'time':
-            self.axes.axvline(x=ind)
-            self.axes.plot(x_array, y_array, linewidth=2.0)
-        else:
-            self.axes.plot(x_array, y_array, 'o')
 
-        self.canvas.draw()
+        self.p1.setData(x=x_array, y=y_array)
 
     def closeEvent(self, event):
        event.accept()

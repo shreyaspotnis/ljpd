@@ -28,6 +28,7 @@ class Logger():
             self.header+=channel_labels[i]+'('+ch_name+') '
             self.logspace.append(np.zeros(self.log_max))
             self.logdict[ch_name] = self.logspace[i]
+            self.logdict[channel_labels[i]] = self.logspace[i]
         self.header+='\n'
         
         self.n_log_curr = 0  # gives the index where we want to log data
