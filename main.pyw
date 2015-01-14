@@ -8,6 +8,8 @@ import labjacksingle
 import logger
 from plotwindow import PlotWindow
 
+from sys import platform as _platform
+
 # hack for TV show
 from numpy.random import random
 
@@ -20,13 +22,13 @@ class MainWindow(QtGui.QMainWindow):
 
         self.initUI()
     def initUI(self):
- 
+
         # set the central widget
         self.cw = CentralWidget(self.config, self.internal_config)
         self.setWindowTitle('PD-LabJack')
         self.setCentralWidget(self.cw)
 
-        # set the font 
+        # set the font
         self.font_name = self.config.get('gui-settings','FONT_NAME')
         self.font_point_size = self.config.getint('gui-settings','FONT_POINT_SIZE')
         self.font = QtGui.QFont(self.font_name, self.font_point_size)
@@ -41,7 +43,7 @@ class MainWindow(QtGui.QMainWindow):
 
         self.takeSnapshotAction = QtGui.QAction('&Take', self)
         self.takeSnapshotAction.triggered.connect(self.cw.takeSnapshot)
-        
+
         self.loadSnapshotAction = QtGui.QAction('&Load', self)
         self.loadSnapshotAction.triggered.connect(self.cw.loadSnapshot)
 
@@ -51,7 +53,7 @@ class MainWindow(QtGui.QMainWindow):
 
         self.showPlotAction = QtGui.QAction('&Show', self)
         self.showPlotAction.triggered.connect(self.cw.showPlot)
-        
+
         self.editConfigAction = QtGui.QAction('&Reload config.ini', self)
         self.editConfigAction.triggered.connect(self.reloadCentralWidget)
 
@@ -82,7 +84,7 @@ class MainWindow(QtGui.QMainWindow):
 
         # close labjack
         self.cw.ljs.closeLJ()
-    
+
         # set the central widget
         self.cw = CentralWidget(self.config, self.internal_config)
         self.setCentralWidget(self.cw)
@@ -92,7 +94,7 @@ class MainWindow(QtGui.QMainWindow):
         self.showPlotAction.triggered.connect(self.cw.showPlot)
         self.editConfigAction.triggered.connect(self.reloadCentralWidget)
 
-        
+
 class CentralWidget(QtGui.QWidget):
 
     # This signal is emmited whenever we use logger to log new data read from
@@ -101,7 +103,7 @@ class CentralWidget(QtGui.QWidget):
 
     def __init__(self, config, internal_config):
         super(CentralWidget, self).__init__()
-        
+
         # get a copy of the config object
         self.config = config
         self.internal_config = internal_config
@@ -117,14 +119,14 @@ class CentralWidget(QtGui.QWidget):
         # if we do not want to monitor them.
         self.ljs.configure()
 
-    
+
         # start the logger
-        self.log = logger.Logger(self.config, self.channel_labels) 
+        self.log = logger.Logger(self.config, self.channel_labels)
         self.initUI()
 
     def getConfig(self):
          # get labels for all the channels
-        self.channel_labels = [] 
+        self.channel_labels = []
         for key in self.all_channels:
             self.channel_labels.append(self.config.get('channel_labels', key))
 
@@ -141,7 +143,7 @@ class CentralWidget(QtGui.QWidget):
         self.timer_value = int(1000/float(self.config.get('settings','READ_RATE')))
 
     def initUI(self):
-        # set the font 
+        # set the font
         self.font_name = self.config.get('gui-settings','FONT_NAME')
         self.font_point_size = self.config.getint('gui-settings','FONT_POINT_SIZE')
         self.font_big_point_size_numbers = self.config.getint('gui-settings',
@@ -168,7 +170,7 @@ class CentralWidget(QtGui.QWidget):
 
     def createVoltageBoxes(self):
         nchannels = len(self.channels_used)
-        
+
         # create boxes to display PD readings
         self.displayboxes = []
         self.snapshotboxes = []
@@ -197,7 +199,7 @@ class CentralWidget(QtGui.QWidget):
             self.grid.addWidget(lbl, i+1, 0, 1, 1)
             self.grid.addWidget(dp, i+1, 1, 1, 1)
             self.grid.addWidget(dp_snap, i+1, 2, 1, 1)
-   
+
         # create the big display boxes
         label_no = 0
         self.big_formulae = []
@@ -208,7 +210,7 @@ class CentralWidget(QtGui.QWidget):
             sp.setReadOnly(True)
             dp.setText('{0:.2f}'.format(0.0))
             sp.setText('{0:.2f}'.format(0.0))
-            
+
             lbl = QtGui.QLabel(label, self)
 
             dp.setFont(self.font_big_numbers)
@@ -252,7 +254,7 @@ class CentralWidget(QtGui.QWidget):
 
         self.log.log(voltages)
         self.dataUpdated.emit()
-      
+
         # self.plotGraphs()
         for dp, ch in zip(self.displayboxes, self.channels_used):
             dp.setText('{0:.0f}'.format(voltages[ch]))
@@ -260,10 +262,10 @@ class CentralWidget(QtGui.QWidget):
         # create a dictionary for evaluating big_formulae
         d = dict(zip(self.all_channels, voltages))
         for dp, formula in zip(self.bigboxes, self.big_formulae):
-            dp.setText('{0:.0f}'.format(eval(formula, d))) 
+            dp.setText('{0:.0f}'.format(eval(formula, d)))
 
     def copyPasta(self, e):
-        infoString = ""        
+        infoString = ""
         for label, dp, sp in zip(self.labels, self.displayboxes, self.snapshotboxes):
             infoString += label.text() +"\t" + dp.text() +"\t" + sp.text() +"\n"
         for label, dp, sp in zip(self.biglabels, self.bigboxes, self.bigsnaps):
@@ -274,9 +276,9 @@ class CentralWidget(QtGui.QWidget):
         print infoString
 
     def takeSnapshot(self, e):
-        
+
         # get a comment from the user
-        comment, ok = QtGui.QInputDialog.getText(self, 'Input Dialog', 
+        comment, ok = QtGui.QInputDialog.getText(self, 'Input Dialog',
                     'Comment for the snapshot:')
         if ok:
             # stop regular logging
@@ -291,7 +293,7 @@ class CentralWidget(QtGui.QWidget):
                 v_curr = self.ljs.read(averages = 1)
                 for i in range(len(v_curr)):
                     voltages[i]+=v_curr[i]
-                
+
                 n_averages += 1
                 delta_time = datetime.now()-start_time
                 n_ms = delta_time.seconds*1000+delta_time.microseconds/1000
@@ -347,7 +349,7 @@ class SnapDialog(QtGui.QDialog):
         self.snap_list = QtGui.QListWidget(self)
         self.snap_items = []
         #self.qsnap_items = []
-        for sdate, stime in zip(snap_stuff[0], snap_stuff[1]): 
+        for sdate, stime in zip(snap_stuff[0], snap_stuff[1]):
             snap_id = sdate+' '+stime
             self.snap_items.append(snap_id)
             #self.qsnap_items.append(QtGui.QListWidgetItem(snap_id,
@@ -360,7 +362,7 @@ class SnapDialog(QtGui.QDialog):
         # insert label
         lbl_comment = QtGui.QLabel('Comment:', self)
         lbl_snapshot = QtGui.QLabel('Snapshot:', self)
-        
+
         # comment box
         self.comment_box = QtGui.QTextEdit(self)
         self.comment_box.setReadOnly(True)
@@ -418,15 +420,24 @@ class SnapDialog(QtGui.QDialog):
 
 
 def main():
+
+    if _platform == "win32":
+        import ctypes
+        myappid = 'steinberglabs.python.ljpd.1'  # arbitrary string
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
     # setup config parser
     config = ConfigParser.SafeConfigParser(allow_no_value=True)
     internal_config = ConfigParser.SafeConfigParser(allow_no_value=True)
     config.read("config.ini")
     internal_config.read("internal_config.ini")
 
+    path_to_icon = './icon.ico'
     app = QtGui.QApplication(sys.argv)
-   
+    app.setWindowIcon(QtGui.QIcon(path_to_icon))
+
     w = MainWindow(config, internal_config)
+    w.setWindowIcon(QtGui.QIcon(path_to_icon))
 
     sys.exit(app.exec_())
 

@@ -4,15 +4,17 @@ import re
 import numpy as np
 from datetime import datetime
 
+
 class Logger():
 
     def __init__(self, config, channel_labels):
-        self.skip = config.getint('settings','LOG_SKIP')
+        self.skip = config.getint('settings', 'LOG_SKIP')
         self.folder = config.get('settings', 'LOG_FOLDER')
         self.write_interval = config.getint('settings', 'LOG_WRITE_INTERVAL')
         self.log_max = config.getint('settings', 'LOG_MAX')
         self.snapshot_file = config.get('settings', 'LOG_SNAPSHOT_FILE')
-        self.snapshot_average = config.getint('settings', 'LOG_SNAPSHOT_AVERAGE')
+        self.snapshot_average = config.getint('settings',
+                                              'LOG_SNAPSHOT_AVERAGE')
 
         # We haven't written data anytime
         self.last_write_time = datetime.now()

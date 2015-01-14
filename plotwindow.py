@@ -1,6 +1,7 @@
 from PyQt4 import QtGui, QtCore
 import pyqtgraph as pg
 
+
 class PlotWindow(QtGui.QDialog):
     def __init__(self, parent, log, updateSignal):
         super(PlotWindow, self).__init__(parent)
