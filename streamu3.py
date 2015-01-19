@@ -1,4 +1,5 @@
-# Peter N. Saeta, 2013 November 11
+# David Spierings, Jan. 19 2015
+# Adapted from Peter N. Saeta, 2013 November 11
 
 # This code uses the LabJack to record 1 or more voltages at a
 # regular cadence. It runs until you stop it with Ctrl-C.
