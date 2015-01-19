@@ -9,10 +9,10 @@
 # the accuracy, but the slower the sampling rate must be. See
 # http://labjack.com/support/u3/users-guide/3.2 for details.
 
-NumChannels = 2
+NumChannels = 1
 # The number of times each second that each channel will be sampled
 SampleFrequency = 10000
-Resolution = 2
+Resolution = 1
 # Where the data will be written
 filename = 'data.txt'
 # Put a list of strings with the names you would like associated with
