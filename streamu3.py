@@ -28,6 +28,7 @@ import time
 d = u3.U3()        # initialize the interface; assumes a single U3 is plugged in to a USB port
 d.configU3()    # set default configuration
 d.configIO( FIOAnalog = 1 )        # ask for analog inputs
+d.getFeedback(u3.BitDirWrite(IONumber = 6, Direction = 0))        # set FI06 as digital input
 
 # In case the stream was left running from a previous execution
 try: d.streamStop()
@@ -69,6 +70,9 @@ with open(filename, 'w') as f:
 # start the stream
 d.streamStart()
 loop = 0
+# Set tigger, which will initiate data writing
+inputState = d.getDIState(6)
+print inputState
 
 try:
     start = time.time()
