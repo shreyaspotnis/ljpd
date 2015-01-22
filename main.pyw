@@ -41,6 +41,8 @@ class MainWindow(QtGui.QMainWindow):
         #exitAction.triggered.connect(QtCore.QCoreApplication.instance().quit)
         #exitAction.triggered.connect(QtGui.qApp.quit)
 
+        #
+
         self.takeSnapshotAction = QtGui.QAction('&Take', self)
         self.takeSnapshotAction.triggered.connect(self.cw.takeSnapshot)
 
@@ -108,7 +110,7 @@ class CentralWidget(QtGui.QWidget):
         self.config = config
         self.internal_config = internal_config
         # Start labjack
-        self.ljs = labjacksingle.LabJackSingle()
+        self.ljs = labjacksingle.LabJackSingle(config)
         self.all_channels = self.ljs.getAllChannels()
 
         # load settings from config.ini
@@ -119,10 +121,17 @@ class CentralWidget(QtGui.QWidget):
         # if we do not want to monitor them.
         self.ljs.configure()
 
+        #configure labjack to make one channel available for streaming
+        self.ljs.configureStream()
 
         # start the logger
         self.log = logger.Logger(self.config, self.channel_labels)
         self.initUI()
+
+
+    def recordData(self):
+        #write the streamed data to file
+        self.ljs.streamWrite(self.ljs.streamMeasure())
 
     def getConfig(self):
          # get labels for all the channels
@@ -156,7 +165,6 @@ class CentralWidget(QtGui.QWidget):
         self.font_big_labels = QtGui.QFont(self.font_name,
                                     self.font_big_point_size_labels)
         self.setFont(self.font)
-
 
         self.grid = QtGui.QGridLayout()
         self.createVoltageBoxes()

@@ -15,11 +15,26 @@ EIO_ANALOG = 50591
 
 class LabJackSingle(object):
     
-    def __init__(self):
+    def __init__(self, config):
          # create a list of all channels
         self.all_channels = ['AIN0', 'AIN1', 'AIN2', 'AIN3', 'AIN4',
                          'AIN5', 'AIN6', 'AIN7', 'AIN8', 'AIN9',
                          'AIN10', 'AIN11', 'AIN12', 'AIN13', 'AIN14','AIN15']
+
+
+        self.config = config
+
+        # load settings from config.ini
+        self.getConfig()
+
+    def getConfig(self):
+        #get stream settings from config.ini
+        self.streamChannel = self.config.getint('stream_settings','streamChannel')
+        self.triggerChannel = self.config.getint('stream_settings','triggerChannel')
+        self.sampleFrequency = self.config.getint('stream_settings','sampleFrequency')
+        self.resolution = self.config.getint('stream_settings','resolution')
+        self.numChannels = self.config.getint('stream_settings','numChannels')
+        self.streamFile = self.config.get('stream_settings', 'streamFile')
         
     def configure(self, channels = None):
         """Opens labjack and configures to read analog signals.
@@ -65,6 +80,49 @@ class LabJackSingle(object):
             self.cmd.append(u3.AIN(ch, 31, 
                                     QuickSample = False,
                                     LongSettling = False))
+
+    def configureStream(self):
+        # In case the stream was left running from a previous execution
+        try: self.d.streamStop()
+        except: pass
+
+        self.d.streamConfig( NumChannels = self.numChannels,
+            PChannels = [ self.streamChannel ],
+            NChannels = [ 31 ],
+            Resolution = self.resolution,
+            SampleFrequency = self.sampleFrequency )
+
+        # set one channel to be the trigger for the stream
+        #self.d.configIO(TimerCounterPinOffset = 6, NumberOfTimersEnabled = 1)
+        #self.d.getFeedback(u3.BitDirWrite(IONumber = trigChan, Direction = 0))
+
+    def checkStreamTrig(self):
+        return self.d.getFeedback(u3.BitStateRead(IONumber = self.triggerChannel))
+
+    def streamMeasure(self):
+        try:
+            for r in self.d.streamData():
+                if r is not None:
+                    if r['errors'] or r['numPackets'] != self.d.packetsPerRequest or r['missed']:
+                        print "error: errors = '%s', numpackets = %d, missed = '%s'" % (r['errors'], r['numPackets'], r['missed'])
+                        cnt = 0
+
+                        # # StreamData packets are 64 bytes and the 11th byte is the error code.
+                        # # Iterating through error code bytes and displaying the error code
+                        # # when detected.
+                        # for err in r['result'][11::64]:
+                        #     errNum = ord(err)
+                        #     if errNum != 0:
+                        #         print "Packet", cnt, "error:", errNum
+                        #     cnt+=1
+                break
+        finally:
+            pass
+        return r
+
+    def streamWrite(self, r):
+        self.streamFile.write(r['AIN%d'] % self.streamChannel + '\n')
+
     def closeLJ(self):
         self.d.close()
 

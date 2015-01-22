@@ -9,10 +9,8 @@
 # the accuracy, but the slower the sampling rate must be. See
 # http://labjack.com/support/u3/users-guide/3.2 for details.
 
-£
-
 NumChannels = 1
-streamChan = 1    #The channel that will be configured and used in streamMode
+streamChan = 1    #The channel that will be configured and used in steamMode
 # The number of times each second that each channel will be sampled
 SampleFrequency = 10000
 Resolution = 1
@@ -83,7 +81,7 @@ with open(filename, 'w') as f:
         wavenames.append('Time')    #make a Time column so we can test writing speed
     f.write( '\t'.join(wavenames) + '\n')
 
-#Poll the triggering channel, preventing the stream from starting before triggered
+# Poll the triggering channel, preventing the stream from starting before triggered
 # while(1):
 #     if d.getFeedback(u3.BitStateRead(IONumber = TrigChan)) == 1:
 #         print d.getDIState(TrigChan)
