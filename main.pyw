@@ -284,27 +284,33 @@ class CentralWidget(QtGui.QWidget):
             # stop regular logging and streamTimer
             self.streamTimer.stop()
             self.timer.stop()
+            #Create empty stringStream to act as buffer for data
+            if self.streamIndex == 0:
+                self.ljs.initStringStream()
 
-            if self.streamIndex >= len(self.ljs.streamChannels):
-                print "Triggering more times than # of stream channels"
-                self.timer.start(self.timer_value, self)
-                return
-
+            #Make header for this set of data
+            self.ljs.streamHeader(self.streamIndex)
             #Configure stream
             self.ljs.configureStream(self.streamIndex)
-
             #Begin streaming
             self.ljs.startStream()
             self.start = time.time()
 
             while self.ljs.checkTrigger() == 0:
-            #for s in range(10):
                 self.ljs.streamWrite(self.ljs.streamMeasure(), self.streamIndex, self.start)
 
             self.ljs.stopStream()
             self.streamIndex += 1
+            
+            if self.streamIndex >= len(self.ljs.streamChannels):
+                #One run is completed. Let's get prepared for new run
+                self.ljs.filePush()         #write stringStream buffer to file
+                self.streamIndex = 0
+                self.timer.start(self.timer_value, self)
+                self.streamTimer.start(self.check_stream)
+                return
 
-            # resume regular logging
+            # resume regular timing
             self.timer.start(self.timer_value, self)
             self.streamTimer.start(self.check_stream)
 

@@ -6,6 +6,7 @@ from datetime import datetime
 import time
 import struct
 import os
+import cStringIO
 import threading
 import Queue
 import ctypes, copy, sys
@@ -36,27 +37,13 @@ class LabJackSingle(object):
         self.sampleFrequency = self.config.getint('stream_settings','sampleFrequency')
         self.resolution = self.config.getint('stream_settings','resolution')
         self.numChannels = self.config.getint('stream_settings','numChannels')
-        self.streamFile = self.config.get('stream_settings', 'streamFile')
+        #self.streamFile = self.config.get('stream_settings', 'streamFile')
         self.streamFolder = self.config.get('stream_settings', 'streamFolder')
 
-        self.writeTime = datetime.now()
-        self.today = str(self.writeTime.date())
+        #Stringstream to hold data while streaming
+        self.streamHold = cStringIO.StringIO()
 
-        #Create directory in which to store todays data
-        if not os.path.exists(self.streamFolder+self.today):
-            os.makedirs(self.streamFolder+self.today)
-        #This is now our directory to write in
-        self.streamFolder = self.streamFolder+self.today+'/'
-        #And our file to write in is the time
-        self.streamFile = self.streamFolder+time.strftime('%l:%M%p')
-
-        #In case two runs are done in the same minute
-        if os.path.isfile(self.streamFile):
-            self.streamFile = self.streamFile+'_1'
-
-        self.f = open(self.streamFile, 'a')
-
-
+        #self.f = open(self.streamFile, 'a')
         
     def configure(self, channels = None):
         """Opens labjack and configures to read analog signals.
@@ -104,8 +91,6 @@ class LabJackSingle(object):
                                     LongSettling = False))
 
     def configureStream(self, streamIndex):
-        #Create header for this stream's data
-        self.f.write( "Channel AIN0%d" % self.streamChannels[streamIndex] + '\t' + "Time(s)\n")
 
         # In case the stream was left running from a previous execution
         try: self.d.streamStop()
@@ -163,12 +148,42 @@ class LabJackSingle(object):
         if r is not None:
             chans = [ r['AIN%d' % self.streamChannels[streamIndex]] ]
             #chans = [ r['AIN%d' % (n)] for n in range(self.numChannels) ]
-            #print "test"
+            #print len(chans[0])
             for i in range(len(chans[0])):
-                self.f.write( "\t".join( ['%.6f' % c[i] for c in chans] ) + '\t' + '%0.6f' % (time.time() - start) + '\n' )
+                self.streamHold.write( "\t".join( ['%.6f' % c[i] for c in chans] ) + '\t' + '%0.6f' % (time.time() - start) + '\n' )
 
         else:
-            self.f.write("empty")
+            self.streamHold.write("empty")
+
+    def initStringStream(self):
+        self.streamHold = cStringIO.StringIO()
+
+    def streamHeader(self, streamIndex):
+        self.streamHold.write("AIN0%d" % self.streamChannels[streamIndex] + '\t' + "Time(s)\n")
+
+    def filePush(self):
+        data = self.streamHold.getvalue()
+
+        writeTime = datetime.now()
+        today = str(writeTime.date())
+        #Create directory in which to store todays data
+        if not os.path.exists(self.streamFolder+today):
+            os.makedirs(self.streamFolder+today)
+        #This is now our directory to write in
+        todayFolder = self.streamFolder+today+'/'
+        #And our file to write in is the time
+        streamFile = todayFolder+time.strftime('%R')
+
+        #In case two runs are done in the same minute
+        if os.path.isfile(streamFile):
+            streamFile = streamFile+'_1'
+
+        currentFile = open(streamFile, 'a')
+
+        #Write all data to file
+        currentFile.write(data)
+        #Close stringStream and free the memory buffer
+        self.streamHold.close()
 
     def closeLJ(self):
         self.d.close()
