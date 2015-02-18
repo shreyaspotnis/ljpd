@@ -3,6 +3,8 @@ import sys
 import string
 from PyQt4 import QtGui, QtCore
 from datetime import datetime
+import time
+from time import sleep
 
 import labjacksingle
 import logger
@@ -40,6 +42,8 @@ class MainWindow(QtGui.QMainWindow):
         exitAction.setShortcut('Ctrl+Q')
         #exitAction.triggered.connect(QtCore.QCoreApplication.instance().quit)
         #exitAction.triggered.connect(QtGui.qApp.quit)
+
+        #
 
         self.takeSnapshotAction = QtGui.QAction('&Take', self)
         self.takeSnapshotAction.triggered.connect(self.cw.takeSnapshot)
@@ -108,7 +112,7 @@ class CentralWidget(QtGui.QWidget):
         self.config = config
         self.internal_config = internal_config
         # Start labjack
-        self.ljs = labjacksingle.LabJackSingle()
+        self.ljs = labjacksingle.LabJackSingle(config)
         self.all_channels = self.ljs.getAllChannels()
 
         # load settings from config.ini
@@ -119,6 +123,10 @@ class CentralWidget(QtGui.QWidget):
         # if we do not want to monitor them.
         self.ljs.configure()
 
+        #configure labjack to make one channel available for a trigger
+        self.ljs.initTrigger()
+        self.start = 0
+        self.streamIndex = 0
 
         # start the logger
         self.log = logger.Logger(self.config, self.channel_labels)
@@ -142,6 +150,9 @@ class CentralWidget(QtGui.QWidget):
         # get read speed in Hz, convert it into a value in milliseconds
         self.timer_value = int(1000/float(self.config.get('settings','READ_RATE')))
 
+        #get check streamTrigger rate, convert into ms
+        self.check_stream = int(1000/float(self.config.get('settings','CHECK_STREAM')))
+
     def initUI(self):
         # set the font
         self.font_name = self.config.get('gui-settings','FONT_NAME')
@@ -157,16 +168,20 @@ class CentralWidget(QtGui.QWidget):
                                     self.font_big_point_size_labels)
         self.setFont(self.font)
 
-
         self.grid = QtGui.QGridLayout()
         self.createVoltageBoxes()
         #self.createPlots()
 
         self.setLayout(self.grid)
 
-        # start the timer
+        # create the timers for the GUI and the stream
         self.timer = QtCore.QBasicTimer()
+        self.streamTimer = QtCore.QTimer()
+        self.streamTimer.timeout.connect(self.streamCheck) #send SIGNAL("timeout()") to streamCheck
+        
+        # start the timers
         self.timer.start(self.timer_value, self)
+        self.streamTimer.start(self.check_stream)
 
     def createVoltageBoxes(self):
         nchannels = len(self.channels_used)
@@ -263,6 +278,41 @@ class CentralWidget(QtGui.QWidget):
         d = dict(zip(self.all_channels, voltages))
         for dp, formula in zip(self.bigboxes, self.big_formulae):
             dp.setText('{0:.0f}'.format(eval(formula, d)))
+
+    def streamCheck(self):
+        if self.ljs.checkTrigger() == 0:
+            # stop regular logging and streamTimer
+            self.streamTimer.stop()
+            self.timer.stop()
+            #Create empty stringStream to act as buffer for data
+            if self.streamIndex == 0:
+                self.ljs.initStringStream()
+
+            #Make header for this set of data
+            self.ljs.streamHeader(self.streamIndex)
+            #Configure stream
+            self.ljs.configureStream(self.streamIndex)
+            #Begin streaming
+            self.ljs.startStream()
+            self.start = time.time()
+
+            while self.ljs.checkTrigger() == 0:
+                self.ljs.streamWrite(self.ljs.streamMeasure(), self.streamIndex, self.start)
+
+            self.ljs.stopStream()
+            self.streamIndex += 1
+            
+            if self.streamIndex >= len(self.ljs.streamChannels):
+                #One run is completed. Let's get prepared for new run
+                self.ljs.filePush()         #write stringStream buffer to file
+                self.streamIndex = 0
+                self.timer.start(self.timer_value, self)
+                self.streamTimer.start(self.check_stream)
+                return
+
+            # resume regular timing
+            self.timer.start(self.timer_value, self)
+            self.streamTimer.start(self.check_stream)
 
     def copyPasta(self, e):
         infoString = ""
