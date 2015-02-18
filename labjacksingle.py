@@ -37,13 +37,10 @@ class LabJackSingle(object):
         self.sampleFrequency = self.config.getint('stream_settings','sampleFrequency')
         self.resolution = self.config.getint('stream_settings','resolution')
         self.numChannels = self.config.getint('stream_settings','numChannels')
-        #self.streamFile = self.config.get('stream_settings', 'streamFile')
         self.streamFolder = self.config.get('stream_settings', 'streamFolder')
 
         #Stringstream to hold data while streaming
         self.streamHold = cStringIO.StringIO()
-
-        #self.f = open(self.streamFile, 'a')
         
     def configure(self, channels = None):
         """Opens labjack and configures to read analog signals.
@@ -147,8 +144,6 @@ class LabJackSingle(object):
     def streamWrite(self, r, streamIndex, start):
         if r is not None:
             chans = [ r['AIN%d' % self.streamChannels[streamIndex]] ]
-            #chans = [ r['AIN%d' % (n)] for n in range(self.numChannels) ]
-            #print len(chans[0])
             for i in range(len(chans[0])):
                 self.streamHold.write( "\t".join( ['%.6f' % c[i] for c in chans] ) + '\t' + '%0.6f' % (time.time() - start) + '\n' )
 
