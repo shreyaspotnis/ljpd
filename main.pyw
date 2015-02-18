@@ -3,6 +3,8 @@ import sys
 import string
 from PyQt4 import QtGui, QtCore
 from datetime import datetime
+import time
+from time import sleep
 
 import labjacksingle
 import logger
@@ -121,17 +123,14 @@ class CentralWidget(QtGui.QWidget):
         # if we do not want to monitor them.
         self.ljs.configure()
 
-        #configure labjack to make one channel available for streaming
-        self.ljs.configureStream()
+        #configure labjack to make one channel available for a trigger
+        self.ljs.initTrigger()
+        self.start = 0
+        self.streamIndex = 0
 
         # start the logger
         self.log = logger.Logger(self.config, self.channel_labels)
         self.initUI()
-
-
-    def recordData(self):
-        #write the streamed data to file
-        self.ljs.streamWrite(self.ljs.streamMeasure())
 
     def getConfig(self):
          # get labels for all the channels
@@ -150,6 +149,9 @@ class CentralWidget(QtGui.QWidget):
 
         # get read speed in Hz, convert it into a value in milliseconds
         self.timer_value = int(1000/float(self.config.get('settings','READ_RATE')))
+
+        #get check streamTrigger rate, convert into ms
+        self.check_stream = int(1000/float(self.config.get('settings','CHECK_STREAM')))
 
     def initUI(self):
         # set the font
@@ -172,9 +174,14 @@ class CentralWidget(QtGui.QWidget):
 
         self.setLayout(self.grid)
 
-        # start the timer
+        # create the timers for the GUI and the stream
         self.timer = QtCore.QBasicTimer()
+        self.streamTimer = QtCore.QTimer()
+        self.streamTimer.timeout.connect(self.streamCheck) #send SIGNAL("timeout()") to streamCheck
+        
+        # start the timers
         self.timer.start(self.timer_value, self)
+        self.streamTimer.start(self.check_stream)
 
     def createVoltageBoxes(self):
         nchannels = len(self.channels_used)
@@ -271,6 +278,35 @@ class CentralWidget(QtGui.QWidget):
         d = dict(zip(self.all_channels, voltages))
         for dp, formula in zip(self.bigboxes, self.big_formulae):
             dp.setText('{0:.0f}'.format(eval(formula, d)))
+
+    def streamCheck(self):
+        if self.ljs.checkTrigger() == 0:
+            # stop regular logging and streamTimer
+            self.streamTimer.stop()
+            self.timer.stop()
+
+            if self.streamIndex >= len(self.ljs.streamChannels):
+                print "Triggering more times than # of stream channels"
+                self.timer.start(self.timer_value, self)
+                return
+
+            #Configure stream
+            self.ljs.configureStream(self.streamIndex)
+
+            #Begin streaming
+            self.ljs.startStream()
+            self.start = time.time()
+
+            while self.ljs.checkTrigger() == 0:
+            #for s in range(10):
+                self.ljs.streamWrite(self.ljs.streamMeasure(), self.streamIndex, self.start)
+
+            self.ljs.stopStream()
+            self.streamIndex += 1
+
+            # resume regular logging
+            self.timer.start(self.timer_value, self)
+            self.streamTimer.start(self.check_stream)
 
     def copyPasta(self, e):
         infoString = ""

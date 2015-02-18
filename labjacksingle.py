@@ -3,7 +3,9 @@
 import u3, LabJackPython
 from time import sleep
 from datetime import datetime
+import time
 import struct
+import os
 import threading
 import Queue
 import ctypes, copy, sys
@@ -29,12 +31,32 @@ class LabJackSingle(object):
 
     def getConfig(self):
         #get stream settings from config.ini
-        self.streamChannel = self.config.getint('stream_settings','streamChannel')
+        self.streamChannels = map(int, self.config.get('stream_settings','streamChannels').split(','))
         self.triggerChannel = self.config.getint('stream_settings','triggerChannel')
         self.sampleFrequency = self.config.getint('stream_settings','sampleFrequency')
         self.resolution = self.config.getint('stream_settings','resolution')
         self.numChannels = self.config.getint('stream_settings','numChannels')
         self.streamFile = self.config.get('stream_settings', 'streamFile')
+        self.streamFolder = self.config.get('stream_settings', 'streamFolder')
+
+        self.writeTime = datetime.now()
+        self.today = str(self.writeTime.date())
+
+        #Create directory in which to store todays data
+        if not os.path.exists(self.streamFolder+self.today):
+            os.makedirs(self.streamFolder+self.today)
+        #This is now our directory to write in
+        self.streamFolder = self.streamFolder+self.today+'/'
+        #And our file to write in is the time
+        self.streamFile = self.streamFolder+time.strftime('%l:%M%p')
+
+        #In case two runs are done in the same minute
+        if os.path.isfile(self.streamFile):
+            self.streamFile = self.streamFile+'_1'
+
+        self.f = open(self.streamFile, 'a')
+
+
         
     def configure(self, channels = None):
         """Opens labjack and configures to read analog signals.
@@ -81,23 +103,40 @@ class LabJackSingle(object):
                                     QuickSample = False,
                                     LongSettling = False))
 
-    def configureStream(self):
+    def configureStream(self, streamIndex):
+        #Create header for this stream's data
+        self.f.write( "Channel AIN0%d" % self.streamChannels[streamIndex] + '\t' + "Time(s)\n")
+
         # In case the stream was left running from a previous execution
         try: self.d.streamStop()
         except: pass
 
         self.d.streamConfig( NumChannels = self.numChannels,
-            PChannels = [ self.streamChannel ],
+            PChannels = [ self.streamChannels[streamIndex] ],
             NChannels = [ 31 ],
             Resolution = self.resolution,
             SampleFrequency = self.sampleFrequency )
 
-        # set one channel to be the trigger for the stream
-        #self.d.configIO(TimerCounterPinOffset = 6, NumberOfTimersEnabled = 1)
-        #self.d.getFeedback(u3.BitDirWrite(IONumber = trigChan, Direction = 0))
+        print "AIN0%d" % self.streamChannels[streamIndex] + " configured for stream"
+        
+    def initTrigger(self):
+        # The trigger is by default set to the high=1, but we'll ensure it's an input
+        self.d.getFeedback(u3.BitDirWrite(IONumber = self.triggerChannel, Direction = 0))
+        print "CIO channel configured as streamTrigger"
+        #print "state%d" % self.d.getFeedback(u3.BitStateRead(IONumber = self.triggerChannel))[0]
+        #print "direction%d" % self.d.getFeedback(u3.BitDirRead(IONumber = self.triggerChannel))[0]
 
-    def checkStreamTrig(self):
-        return self.d.getFeedback(u3.BitStateRead(IONumber = self.triggerChannel))
+
+    def checkTrigger(self):
+        return self.d.getFeedback(u3.BitStateRead(IONumber = self.triggerChannel))[0]
+
+    def startStream(self):
+        print "Stream Started"
+        self.d.streamStart()
+
+    def stopStream(self):
+        print "Stream Stopped"
+        self.d.streamStop()
 
     def streamMeasure(self):
         try:
@@ -105,23 +144,31 @@ class LabJackSingle(object):
                 if r is not None:
                     if r['errors'] or r['numPackets'] != self.d.packetsPerRequest or r['missed']:
                         print "error: errors = '%s', numpackets = %d, missed = '%s'" % (r['errors'], r['numPackets'], r['missed'])
-                        cnt = 0
-
+                        
+                        #cnt = 0
                         # # StreamData packets are 64 bytes and the 11th byte is the error code.
                         # # Iterating through error code bytes and displaying the error code
                         # # when detected.
-                        # for err in r['result'][11::64]:
-                        #     errNum = ord(err)
-                        #     if errNum != 0:
-                        #         print "Packet", cnt, "error:", errNum
-                        #     cnt+=1
+                        #for err in r['result'][11::64]:
+                            #errNum = ord(err)
+                            #if errNum != 0:
+                                #print "Packet", cnt, "error:", errNum
+                            #cnt+=1
                 break
         finally:
             pass
         return r
 
-    def streamWrite(self, r):
-        self.streamFile.write(r['AIN%d'] % self.streamChannel + '\n')
+    def streamWrite(self, r, streamIndex, start):
+        if r is not None:
+            chans = [ r['AIN%d' % self.streamChannels[streamIndex]] ]
+            #chans = [ r['AIN%d' % (n)] for n in range(self.numChannels) ]
+            #print "test"
+            for i in range(len(chans[0])):
+                self.f.write( "\t".join( ['%.6f' % c[i] for c in chans] ) + '\t' + '%0.6f' % (time.time() - start) + '\n' )
+
+        else:
+            self.f.write("empty")
 
     def closeLJ(self):
         self.d.close()
