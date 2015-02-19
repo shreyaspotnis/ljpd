@@ -3,6 +3,7 @@ import sys
 import string
 from PyQt4 import QtGui, QtCore
 from datetime import datetime
+import os
 
 import labjacksingle
 import logger
@@ -10,8 +11,15 @@ from plotwindow import PlotWindow
 
 from sys import platform as _platform
 
+
 # hack for TV show
 from numpy.random import random
+
+
+
+main_dir = os.path.dirname(os.path.abspath(__file__))
+path_to_icon = os.path.join(main_dir, 'icon.png')
+
 
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, config, internal_config):
@@ -432,7 +440,6 @@ def main():
     config.read("config.ini")
     internal_config.read("internal_config.ini")
 
-    path_to_icon = './icon.ico'
     app = QtGui.QApplication(sys.argv)
     app.setWindowIcon(QtGui.QIcon(path_to_icon))
 
