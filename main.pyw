@@ -288,7 +288,7 @@ class CentralWidget(QtGui.QWidget):
             dp.setText('{0:.0f}'.format(eval(formula, d)))
 
     def streamCheck(self):
-        if self.ljs.checkTrigger() == 0:
+        if self.ljs.checkTrigger() == 1:
             self.start = time.time()
             # stop regular logging and streamTimer
             self.streamTimer.stop()
@@ -303,7 +303,7 @@ class CentralWidget(QtGui.QWidget):
             self.ljs.configureStream(self.streamIndex)
             #Begin streaming
             self.ljs.startStream()
-            while self.ljs.checkTrigger() == 0:
+            while self.ljs.checkTrigger() == 1:
                 self.ljs.streamWrite(self.ljs.streamMeasure(), self.streamIndex, self.start)
 
             self.ljs.stopStream()
