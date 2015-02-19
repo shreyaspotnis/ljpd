@@ -281,6 +281,7 @@ class CentralWidget(QtGui.QWidget):
 
     def streamCheck(self):
         if self.ljs.checkTrigger() == 0:
+            self.start = time.time()
             # stop regular logging and streamTimer
             self.streamTimer.stop()
             self.timer.stop()
@@ -294,14 +295,12 @@ class CentralWidget(QtGui.QWidget):
             self.ljs.configureStream(self.streamIndex)
             #Begin streaming
             self.ljs.startStream()
-            self.start = time.time()
-
             while self.ljs.checkTrigger() == 0:
                 self.ljs.streamWrite(self.ljs.streamMeasure(), self.streamIndex, self.start)
 
             self.ljs.stopStream()
             self.streamIndex += 1
-            
+
             if self.streamIndex >= len(self.ljs.streamChannels):
                 #One run is completed. Let's get prepared for new run
                 self.ljs.filePush()         #write stringStream buffer to file
