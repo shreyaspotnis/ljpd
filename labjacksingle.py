@@ -17,7 +17,7 @@ FIO_ANALOG = 50590
 EIO_ANALOG = 50591
 
 class LabJackSingle(object):
-    
+
     def __init__(self, config):
          # create a list of all channels
         self.all_channels = ['AIN0', 'AIN1', 'AIN2', 'AIN3', 'AIN4',
@@ -41,7 +41,7 @@ class LabJackSingle(object):
 
         #Stringstream to hold data while streaming
         self.streamHold = cStringIO.StringIO()
-        
+
     def configure(self, channels = None):
         """Opens labjack and configures to read analog signals.
 
@@ -55,7 +55,7 @@ class LabJackSingle(object):
         except LabJackPython.NullHandleException:
             print "Could not open device. Please check that the device you are trying to open is connected"
             sys.exit(1)
-            
+
         # get the labjack configuration
         self.ljconfig = self.d.configU3()
 
@@ -68,7 +68,7 @@ class LabJackSingle(object):
         if channels:
             self.channels = channels
         else:
-            self.channels = range(16) 
+            self.channels = range(16)
 
         # Configure all FIO pins to be analog
         # FIO pins are located on LabJack
@@ -83,7 +83,7 @@ class LabJackSingle(object):
         # make a list of read commands
         self.cmd = []
         for ch in self.channels:
-            self.cmd.append(u3.AIN(ch, 31, 
+            self.cmd.append(u3.AIN(ch, 31,
                                     QuickSample = False,
                                     LongSettling = False))
 
@@ -100,7 +100,7 @@ class LabJackSingle(object):
             SampleFrequency = self.sampleFrequency )
 
         print "AIN0%d" % self.streamChannels[streamIndex] + " configured for stream"
-        
+
     def initTrigger(self):
         # The trigger is by default set to the high=1, but we'll ensure it's an input
         self.d.getFeedback(u3.BitDirWrite(IONumber = self.triggerChannel, Direction = 0))
@@ -126,7 +126,7 @@ class LabJackSingle(object):
                 if r is not None:
                     if r['errors'] or r['numPackets'] != self.d.packetsPerRequest or r['missed']:
                         print "error: errors = '%s', numpackets = %d, missed = '%s'" % (r['errors'], r['numPackets'], r['missed'])
-                        
+
                         #cnt = 0
                         # # StreamData packets are 64 bytes and the 11th byte is the error code.
                         # # Iterating through error code bytes and displaying the error code
@@ -144,9 +144,10 @@ class LabJackSingle(object):
     def streamWrite(self, r, streamIndex, start):
         if r is not None:
             chans = [ r['AIN%d' % self.streamChannels[streamIndex]] ]
+            datapoint = 1.0
             for i in range(len(chans[0])):
-                self.streamHold.write( "\t".join( ['%.6f' % c[i] for c in chans] ) + '\t' + '%0.6f' % (time.time() - start) + '\n' )
-
+                self.streamHold.write( "\t".join( ['%.6f' % c[i] for c in chans] ) + '\t' + '%0.7f' % (datapoint/self.sampleFrequency) + '\n' )
+                datapoint += 1.0
         else:
             self.streamHold.write("empty")
 
@@ -167,12 +168,7 @@ class LabJackSingle(object):
         #This is now our directory to write in
         todayFolder = self.streamFolder+today+'/'
         #And our file to write in is the time
-        streamFile = todayFolder+time.strftime('%R')
-
-        #In case two runs are done in the same minute
-        if os.path.isfile(streamFile):
-            streamFile = streamFile+'_1'
-
+        streamFile = todayFolder+time.strftime('%H_%M_%S')
         currentFile = open(streamFile, 'a')
 
         #Write all data to file
@@ -193,7 +189,7 @@ class LabJackSingle(object):
                 else:
                     LV = True
                 voltage[i] += 1000.0*self.d.binaryToCalibratedAnalogVoltage(bit,
-                          isLowVoltage = LV, 
+                          isLowVoltage = LV,
                           isSingleEnded = True, isSpecialSetting = False,
                           channelNumber = ch)
         for i in range(len(voltage)):
