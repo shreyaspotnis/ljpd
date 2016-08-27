@@ -133,7 +133,6 @@ class CentralWidget(QtGui.QWidget):
 
         #configure labjack to make one channel available for a trigger
         self.ljs.initTrigger()
-        self.start = 0
         self.streamIndex = 0
 
         # start the logger
@@ -289,7 +288,6 @@ class CentralWidget(QtGui.QWidget):
 
     def streamCheck(self):
         if self.ljs.checkTrigger() == 1:
-            self.start = time.time()
             # stop regular logging and streamTimer
             self.streamTimer.stop()
             self.timer.stop()
@@ -304,7 +302,7 @@ class CentralWidget(QtGui.QWidget):
             #Begin streaming
             self.ljs.startStream()
             while self.ljs.checkTrigger() == 1:
-                self.ljs.streamWrite(self.ljs.streamMeasure(), self.streamIndex, self.start)
+                self.ljs.streamWrite(self.ljs.streamMeasure(), self.streamIndex)
 
             self.ljs.stopStream()
             self.streamIndex += 1
