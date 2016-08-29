@@ -30,9 +30,6 @@ class LabJackSingle(object):
         # load settings from config.ini
         self.getConfig()
 
-        #Get a start time for timestamping streams
-        self.start = 0.0
-
     def getConfig(self):
         #get stream settings from config.ini
         self.streamChannels = map(int, self.config.get('stream_settings','streamChannels').split(','))
@@ -118,13 +115,10 @@ class LabJackSingle(object):
     def startStream(self):
         print "Stream Started"
         self.d.streamStart()
-        #t = 0 is defined as the first data point collected
-        self.start = 0.0
 
     def stopStream(self):
         print "Stream Stopped"
         self.d.streamStop()
-        self.start = 0.0
 
     def streamMeasure(self):
         try:
@@ -147,18 +141,13 @@ class LabJackSingle(object):
             pass
         return r
 
-    def streamWrite(self, r, streamIndex):
+    def streamWrite(self, r, streamIndex, start):
         if r is not None:
             chans = [ r['AIN%d' % self.streamChannels[streamIndex]] ]
-            #t = 0 is defined as the first data point collected
-            datapoint = 0.0
-            beginScan = self.start
-            tbd = 1.0 / self.sampleFrequency #time between datapoints in seconds
+            datapoint = 1.0
             for i in range(len(chans[0])):
-                self.streamHold.write( "\t".join( ['%.6f' % c[i] for c in chans] ) + '\t' + '%0.7f' % (beginScan + datapoint*tbd) + '\n' )
+                self.streamHold.write( "\t".join( ['%.6f' % c[i] for c in chans] ) + '\t' + '%0.7f' % (datapoint/self.sampleFrequency) + '\n' )
                 datapoint += 1.0
-
-            self.start += datapoint*tbd
         else:
             self.streamHold.write("empty")
 

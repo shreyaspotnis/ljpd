@@ -12,8 +12,8 @@
 NumChannels = 1
 streamChan = 1    #The channel that will be configured and used in steamMode
 # The number of times each second that each channel will be sampled
-SampleFrequency = 40000
-Resolution = 3
+SampleFrequency = 10000
+Resolution = 1
 # Note: STREAM_SCAN_OVERLAP (Errorcode 55)
 # Where the data will be written
 filename = 'dataClock.txt'
